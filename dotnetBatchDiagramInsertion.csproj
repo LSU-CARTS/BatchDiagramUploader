@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.8.0" />
+    <PackageReference Include="flurl" Version="3.0.4" />
+    <PackageReference Include="flurl.http" Version="3.2.2" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.21.0" />
+    <PackageReference Include="serilog" Version="2.10.0" />
+    <PackageReference Include="serilog.sinks.console" Version="4.0.1" />
+    <PackageReference Include="serilog.sinks.file" Version="5.0.0" />
+    <PackageReference Include="Spectre.Console" Version="0.44.0" />
+    <PackageReference Include="System.Xml.Xpath.XDocument" Version="4.3.0" />
+  </ItemGroup>
+
+</Project>
