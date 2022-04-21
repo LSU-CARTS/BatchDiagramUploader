@@ -148,9 +148,8 @@ namespace BatchDiagramInsertion
         private static async Task<Diagram[]> convertDiagrams(List<Diagram> diagrams, ProgressTask task)
         {
             using var slim = new SemaphoreSlim(5);
-            int numberToTake = 10;
-            double incrementValue = (double)100 / numberToTake;
-            var tasks = diagrams.Take(numberToTake).Select(async diagram =>
+            double incrementValue = (double)100 / diagrams.Count;
+            var tasks = diagrams.Select(async diagram =>
             {
                 await slim.WaitAsync();
                 try
