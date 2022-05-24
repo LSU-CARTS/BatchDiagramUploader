@@ -4,3 +4,4 @@ obj
 *.xml
 state.json
 .vscode
+convertedDiagrams

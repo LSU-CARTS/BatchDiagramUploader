@@ -65,9 +65,22 @@ class Program
         await getToken(options);
         //Read list of diagrams 
         var diagrams = await readDiagrams(options.inputFile);
+        List<Diagram> alreadyConvertedDiagrams = new List<Diagram>();
+        //check to see if we have any of these diagrams in the output folder
+        if(Directory.Exists(Path.Combine(Environment.CurrentDirectory,"convertedDiagrams"))){
+            var alreadyConvertedDiagramFiles =  Directory.GetFiles(Path.Combine(Environment.CurrentDirectory,"convertedDiagrams")).ToList<string>();
+            var fileNames = alreadyConvertedDiagramFiles.Select(x => Path.GetFileName(x));
+            diagrams = diagrams.Where(x => !fileNames.Contains(x.name + ".svg")).ToList();
+            alreadyConvertedDiagrams = alreadyConvertedDiagramFiles.Select(x=> new Diagram {
+                diagram= File.ReadAllBytes(x),
+                name= Path.GetFileName(x)
+            }).ToList();
+        }else{
+            Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory,"convertedDiagrams"));
+        }
 
 
-        var convertedDiagrams = await AnsiConsole.Progress()
+        List<Diagram> convertedDiagrams = await AnsiConsole.Progress()
         .StartAsync(async ctx =>
         {
             var task = ctx.AddTask("Convert Diagrams", new ProgressTaskSettings
@@ -78,6 +91,8 @@ class Program
             return await convertDiagrams(diagrams.ToList(), task);
         });
 
+        List<Diagram> totalConvertedDiagrams = convertedDiagrams.Union(alreadyConvertedDiagrams).ToList();
+
         await AnsiConsole.Progress()
         .StartAsync(async ctx =>
         {
@@ -87,7 +102,7 @@ class Program
             });
 
             //uploads the diagrams to ecrash.la.gov/agency
-            await UploadDiagrams(convertedDiagrams, task);
+            await UploadDiagrams(totalConvertedDiagrams, task);
         });
 
         AnsiConsole.Write(new Markup("[bold dodgerblue2]Diagram Templates successfully uploaded! :)[/]\n"));
@@ -121,6 +136,8 @@ class Program
         MemoryStream data = new MemoryStream();
         await entryStream.CopyToAsync(data);
 
+        await File.WriteAllBytesAsync(Path.Combine(Environment.CurrentDirectory,"convertedDiagrams",diagram.name + ".svg"), data.ToArray());
+
         return new Diagram
         {
             diagram = data.ToArray(),
@@ -140,7 +157,7 @@ class Program
         return list;
     }
 
-    private static async Task<Diagram[]> convertDiagrams(List<Diagram> diagrams, ProgressTask task)
+    private static async Task<List<Diagram>> convertDiagrams(List<Diagram> diagrams, ProgressTask task)
     {
         using var slim = new SemaphoreSlim(5);
         double incrementValue = (double)100 / diagrams.Count;
@@ -159,16 +176,16 @@ class Program
         });
         var results = await Task.WhenAll(tasks);
         AnsiConsole.Write(new Markup("[bold dodgerblue2]Modernized Diagrams[/]"));
-        return results;
+        return results.ToList();
     }
 
-    private static async Task UploadDiagrams(Diagram[] diagrams, ProgressTask task)
+    private static async Task UploadDiagrams(List<Diagram> diagrams, ProgressTask task)
     {
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
-            Headless = false,
-            SlowMo = 100,
+            Headless = true,
+            //SlowMo = 50,
         });
         //login to ecrash.la.gov and save login cookies
         await LoginToECrash(browser);
@@ -179,7 +196,7 @@ class Program
         {
             StorageStatePath = ".\\state.json"
         });
-        double incrementer = 100 / (double)diagrams.Length;
+        double incrementer = 100 / (double)diagrams.Count;
         using var slim = new SemaphoreSlim(5);
         //loop through diagrams and upload
         var tasks = diagrams.Select(async diagram =>
@@ -213,7 +230,8 @@ class Program
             MimeType = "application/octet-stream",
             Buffer = diagram.diagram
         });
-        await page.ClickAsync("text=Upload");
+        //await page.ClickAsync("text=Upload");
+        await page.CloseAsync();
     }
 
     private static async Task LoginToECrash(IBrowser browser)
